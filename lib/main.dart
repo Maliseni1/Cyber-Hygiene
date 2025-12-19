@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/splash_screen.dart';
 import 'utils/constants.dart';
 
 void main() async {
@@ -20,7 +21,7 @@ class CyberHygieneApp extends StatelessWidget {
         primaryColor: AppConstants.kPrimaryColor,
         scaffoldBackgroundColor: AppConstants.kBackgroundColor,
       ),
-      home: const DashboardScreen(),
+      home: const SplashScreen(),
     );
   }
 }
