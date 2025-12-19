@@ -56,7 +56,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // Default advice if no real threats found
       if (scanResults.isEmpty) {
         scanResults.add(AuditResult(
           title: "System Clean",
@@ -65,7 +64,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ));
       }
       
-      // Always add general hygiene advice
       scanResults.add(AuditResult(
         title: "2FA Check",
         recommendation: "Enable 2FA on your Google Account.",
@@ -90,13 +88,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Define dynamic colors based on the current Theme
     final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
     final subTextColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey;
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
-      // Background is now handled by the Theme in main.dart
       appBar: AppBar(
         title: Text(
           AppConstants.appName, 
@@ -148,55 +144,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               
               const SizedBox(height: 30),
 
-              // --- SECTION 3: TOOLS GRID ---
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text("Security Tools", style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 15),
-
-              GridView.count(
-                shrinkWrap: true, // Vital for inside SingleChildScrollView
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 15,
-                mainAxisSpacing: 15,
-                childAspectRatio: 1.1,
-                children: [
-                  _buildTile(
-                    context, 
-                    "Spyware\nHunter", 
-                    Icons.remove_red_eye, 
-                    AppConstants.kWarningColor, 
-                    const SpywareHunterScreen()
-                  ),
-                  _buildTile(
-                    context, 
-                    "Permission\nAudit", 
-                    Icons.lock_person, 
-                    Colors.blueAccent, 
-                    const PermissionAuditScreen()
-                  ),
-                  _buildTile(
-                    context, 
-                    "Data Breach\nCheck", 
-                    Icons.travel_explore, 
-                    Colors.deepPurpleAccent, 
-                    const DataBreachScreen()
-                  ),
-                  _buildTile(
-                    context, 
-                    "Password\nGenerator", 
-                    Icons.vpn_key, 
-                    Colors.tealAccent, 
-                    const PasswordGeneratorScreen()
-                  ),
-                ],
-              ),
-
-              // --- SECTION 4: RESULTS (Only if scanned) ---
+              // --- SECTION 3: RESULTS (MOVED UP) ---
+              // Now appears immediately after scanning
               if (_hasScanned) ...[
-                const SizedBox(height: 30),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text("Improvement Advice", style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -206,7 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: cardColor, // Dynamic Card Color
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border(left: BorderSide(color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor, width: 4))
                   ),
@@ -225,7 +175,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 )),
-              ]
+                const SizedBox(height: 30), // Spacing before tools
+              ],
+
+              // --- SECTION 4: TOOLS GRID ---
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Security Tools", style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 15),
+
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 15,
+                childAspectRatio: 1.1,
+                children: [
+                  _buildTile(context, "Spyware\nHunter", Icons.remove_red_eye, AppConstants.kWarningColor, const SpywareHunterScreen()),
+                  _buildTile(context, "Permission\nAudit", Icons.lock_person, Colors.blueAccent, const PermissionAuditScreen()),
+                  _buildTile(context, "Data Breach\nCheck", Icons.travel_explore, Colors.deepPurpleAccent, const DataBreachScreen()),
+                  _buildTile(context, "Password\nGenerator", Icons.vpn_key, Colors.tealAccent, const PasswordGeneratorScreen()),
+                ],
+              ),
+              
+              const SizedBox(height: 20),
             ],
           ),
         ),

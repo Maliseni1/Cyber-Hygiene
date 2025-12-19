@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart'; // Ensure you have this package
+import 'dart:io'; // Needed for file deletion
 import '../utils/constants.dart';
 import '../services/local_storage.dart';
 import '../services/update_service.dart';
@@ -34,17 +36,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // --- Update Feature Logic ---
   Future<void> _handleCheckUpdate() async {
     setState(() => _isCheckingUpdate = true);
-
     final result = await _updateService.checkForUpdate();
-
     setState(() => _isCheckingUpdate = false);
 
     if (!mounted) return;
 
     if (result == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Could not connect to update server.")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Could not connect to update server.")));
       return;
     }
 
@@ -52,10 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showUpdateDialog(result);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("You are up to date!"),
-          backgroundColor: AppConstants.kSafeColor,
-        ),
+        SnackBar(content: const Text("You are up to date!"), backgroundColor: AppConstants.kSafeColor),
       );
     }
   }
@@ -64,31 +59,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        // Use Theme card color
         backgroundColor: Theme.of(context).cardColor,
         title: Text("Update Available 🚀", style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Version ${updateData['latestVersion']} is available.",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+            Text("Version ${updateData['latestVersion']} is available.", style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            Text(
-              updateData['body'] ?? "Security improvements and bug fixes.",
-              style: const TextStyle(color: Colors.grey),
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-            ),
+            Text(updateData['body'] ?? "Improvements.", style: const TextStyle(color: Colors.grey), maxLines: 5),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Later"),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Later")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppConstants.kPrimaryColor),
             onPressed: () {
@@ -102,7 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // --- Data Wipe Logic ---
+  // --- COMPLETE DATA WIPE LOGIC ---
   Future<void> _handleClearData() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -110,27 +93,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Theme.of(context).cardColor,
         title: Text("Reset App Data?", style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
         content: const Text(
-          "This will wipe all your scan history and preferences. This action cannot be undone.",
+          "This will wipe all preferences, scan history, and temporary cache files.\n\nThe app will reset to a fresh state.",
           style: TextStyle(color: Colors.grey),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Wipe Data", style: TextStyle(color: AppConstants.kDangerColor)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Wipe Everything", style: TextStyle(color: AppConstants.kDangerColor))),
         ],
       ),
     );
 
     if (confirmed == true) {
+      // 1. Clear SharedPreferences / Local Database
       await _storage.clearAllData();
+      
+      // 2. Clear App Cache (Temporary Directory)
+      try {
+        final cacheDir = await getTemporaryDirectory();
+        if (cacheDir.existsSync()) {
+          cacheDir.deleteSync(recursive: true);
+        }
+      } catch (e) {
+        print("Error clearing cache: $e");
+      }
+
+      // 3. Reset Theme to System
+      themeManager.toggleTheme(ThemeMode.system);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("All data erased securely.")),
+          const SnackBar(content: Text("All data & cache cleared. Please restart the app.")),
         );
       }
     }
@@ -139,16 +131,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final currentMode = themeManager.themeMode;
-    // We use the Theme colors now instead of AppConstants.kBackgroundColor
     final headerColor = Theme.of(context).textTheme.bodyLarge?.color;
 
     return Scaffold(
-      // Background handled by main.dart Theme
       appBar: AppBar(
         title: Text("Settings", style: AppConstants.headerStyle.copyWith(fontSize: 20, color: headerColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: headerColor), // Back button color matches theme
+        iconTheme: IconThemeData(color: headerColor),
       ),
       body: Column(
         children: [
@@ -156,15 +146,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListView(
               children: [
                 const SizedBox(height: 10),
-
-                // --- SECTION 1: APPEARANCE (NEW) ---
                 _buildSectionHeader("Appearance"),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(12)),
                   child: Column(
                     children: [
                       _buildThemeOption("System Default", ThemeMode.system, Icons.brightness_auto, currentMode),
@@ -175,22 +160,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
-                
-                // --- SECTION 2: DATA & PRIVACY ---
                 _buildSectionHeader("Data & Privacy"),
                 _buildTile(
                   icon: Icons.delete_forever,
                   title: "Wipe All Data",
-                  subtitle: "Clear local storage and scan history",
+                  subtitle: "Clear history, cache & settings",
                   iconColor: AppConstants.kDangerColor,
                   onTap: _handleClearData,
                 ),
-                
                 const SizedBox(height: 20),
-
-                // --- SECTION 3: ABOUT ---
                 _buildSectionHeader("About"),
                 _buildTile(
                   icon: Icons.system_update,
@@ -206,20 +185,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   iconColor: Colors.blueGrey,
                   onTap: () {}, 
                 ),
-                _buildTile(
-                  icon: Icons.shield,
-                  title: "Privacy Policy",
-                  subtitle: "No data leaves this device.",
-                  iconColor: AppConstants.kSafeColor,
-                  onTap: () {
-                    // Placeholder
-                  },
-                ),
               ],
             ),
           ),
-          
-          // -- Chiza Labs Branding Footer --
           Padding(
             padding: const EdgeInsets.only(bottom: 30.0),
             child: Column(
@@ -227,10 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Icon(Icons.code, size: 16, color: Colors.grey),
                 const SizedBox(height: 8),
                 Text("Designed & Built by", style: TextStyle(color: headerColor, fontSize: 12)),
-                Text(
-                  AppConstants.companyName.toUpperCase(), 
-                  style: TextStyle(color: AppConstants.kPrimaryColor, fontWeight: FontWeight.bold, letterSpacing: 1.5)
-                ),
+                Text(AppConstants.companyName.toUpperCase(), style: TextStyle(color: AppConstants.kPrimaryColor, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                 const SizedBox(height: 4),
                 Text(AppConstants.copyright, style: const TextStyle(color: Colors.grey, fontSize: 10)),
               ],
@@ -256,41 +221,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          color: AppConstants.kPrimaryColor,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-          fontSize: 12,
-        ),
-      ),
+      child: Text(title.toUpperCase(), style: TextStyle(color: AppConstants.kPrimaryColor, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 12)),
     );
   }
 
-  Widget _buildTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color iconColor,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildTile({required IconData icon, required String title, required String subtitle, required Color iconColor, required VoidCallback onTap}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // Replaces AppConstants.kCardColor
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor),
-        ),
-        title: Text(title, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)), // Replaces Colors.white
+        leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, color: iconColor)),
+        title: Text(title, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: onTap,
