@@ -4,6 +4,8 @@ import '../models/audit_result.dart';
 import '../utils/constants.dart';
 import '../widgets/score_circle.dart';
 import 'settings_screen.dart';
+import 'permission_audit_screen.dart';
+import 'data_breach_screen.dart';
 // Ensure this import points to the file where you put the SpywareHunterScreen class
 import 'spyware_screen.dart'; 
 
@@ -123,9 +125,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  // FIX: Use the correct class name 'SpywareHunterScreen'
-                  // removing 'const' if the constructor causes issues, 
-                  // but 'const' is fine if the class is defined with a const constructor.
                   MaterialPageRoute(builder: (context) => const SpywareHunterScreen()),
                 );
               },
@@ -133,6 +132,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
               label: const Text("Open Spyware Hunter", style: TextStyle(color: Colors.white)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppConstants.kWarningColor),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            // 3. Permission Audit Button (NEW)
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PermissionAuditScreen()),
+                );
+              },
+              icon: const Icon(Icons.lock_person, color: Colors.blueAccent),
+              label: const Text("Permission Audit Tool", style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.blueAccent),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 4. NEW: Data Breach Checker Button
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const DataBreachScreen()),
+                );
+              },
+              icon: const Icon(Icons.travel_explore, color: Colors.deepPurple),
+              label: const Text("Data Breach Checker", style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.deepPurple),
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
             ),
