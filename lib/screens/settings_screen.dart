@@ -3,6 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/constants.dart';
 import '../services/local_storage.dart';
 import '../services/update_service.dart';
+import '../utils/theme_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -63,15 +64,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.kCardColor,
-        title: const Text("Update Available 🚀", style: TextStyle(color: Colors.white)),
+        // Use Theme card color
+        backgroundColor: Theme.of(context).cardColor,
+        title: Text("Update Available 🚀", style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               "Version ${updateData['latestVersion']} is available.",
-              style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             Text(
@@ -105,8 +107,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppConstants.kCardColor,
-        title: const Text("Reset App Data?", style: TextStyle(color: Colors.white)),
+        backgroundColor: Theme.of(context).cardColor,
+        title: Text("Reset App Data?", style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
         content: const Text(
           "This will wipe all your scan history and preferences. This action cannot be undone.",
           style: TextStyle(color: Colors.grey),
@@ -136,19 +138,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentMode = themeManager.themeMode;
+    // We use the Theme colors now instead of AppConstants.kBackgroundColor
+    final headerColor = Theme.of(context).textTheme.bodyLarge?.color;
+
     return Scaffold(
-      backgroundColor: AppConstants.kBackgroundColor,
+      // Background handled by main.dart Theme
       appBar: AppBar(
-        title: Text("Settings", style: AppConstants.headerStyle.copyWith(fontSize: 20)),
+        title: Text("Settings", style: AppConstants.headerStyle.copyWith(fontSize: 20, color: headerColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: headerColor), // Back button color matches theme
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView(
               children: [
+                const SizedBox(height: 10),
+
+                // --- SECTION 1: APPEARANCE (NEW) ---
+                _buildSectionHeader("Appearance"),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildThemeOption("System Default", ThemeMode.system, Icons.brightness_auto, currentMode),
+                      Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                      _buildThemeOption("Light Mode", ThemeMode.light, Icons.wb_sunny, currentMode),
+                      Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                      _buildThemeOption("Dark Mode", ThemeMode.dark, Icons.nights_stay, currentMode),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 20),
+                
+                // --- SECTION 2: DATA & PRIVACY ---
                 _buildSectionHeader("Data & Privacy"),
                 _buildTile(
                   icon: Icons.delete_forever,
@@ -159,8 +189,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 
                 const SizedBox(height: 20),
+
+                // --- SECTION 3: ABOUT ---
                 _buildSectionHeader("About"),
-                // NEW: Update Check Tile
                 _buildTile(
                   icon: Icons.system_update,
                   title: "Check for Updates",
@@ -173,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: "Version Info",
                   subtitle: "Build details",
                   iconColor: Colors.blueGrey,
-                  onTap: () {}, // Just informational
+                  onTap: () {}, 
                 ),
                 _buildTile(
                   icon: Icons.shield,
@@ -181,12 +212,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: "No data leaves this device.",
                   iconColor: AppConstants.kSafeColor,
                   onTap: () {
-                    // Placeholder for future privacy policy page
+                    // Placeholder
                   },
                 ),
               ],
             ),
           ),
+          
           // -- Chiza Labs Branding Footer --
           Padding(
             padding: const EdgeInsets.only(bottom: 30.0),
@@ -194,15 +226,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 const Icon(Icons.code, size: 16, color: Colors.grey),
                 const SizedBox(height: 8),
-                Text("Designed & Built by", style: AppConstants.bodyStyle),
-                Text(AppConstants.companyName.toUpperCase(), style: AppConstants.brandingStyle),
+                Text("Designed & Built by", style: TextStyle(color: headerColor, fontSize: 12)),
+                Text(
+                  AppConstants.companyName.toUpperCase(), 
+                  style: TextStyle(color: AppConstants.kPrimaryColor, fontWeight: FontWeight.bold, letterSpacing: 1.5)
+                ),
                 const SizedBox(height: 4),
-                Text(AppConstants.copyright, style: AppConstants.brandingStyle.copyWith(fontSize: 10)),
+                Text(AppConstants.copyright, style: const TextStyle(color: Colors.grey, fontSize: 10)),
               ],
             ),
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildThemeOption(String title, ThemeMode mode, IconData icon, ThemeMode currentMode) {
+    final isSelected = currentMode == mode;
+    return RadioListTile<ThemeMode>(
+      title: Text(title, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)),
+      secondary: Icon(icon, color: isSelected ? AppConstants.kPrimaryColor : Colors.grey),
+      value: mode,
+      groupValue: currentMode,
+      activeColor: AppConstants.kPrimaryColor,
+      onChanged: (value) => themeManager.toggleTheme(value!),
     );
   }
 
@@ -231,7 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppConstants.kCardColor,
+        color: Theme.of(context).cardColor, // Replaces AppConstants.kCardColor
         borderRadius: BorderRadius.circular(12),
       ),
       child: ListTile(
@@ -243,7 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Icon(icon, color: iconColor),
         ),
-        title: Text(title, style: const TextStyle(color: Colors.white)),
+        title: Text(title, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color)), // Replaces Colors.white
         subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
         trailing: const Icon(Icons.chevron_right, color: Colors.grey),
         onTap: onTap,

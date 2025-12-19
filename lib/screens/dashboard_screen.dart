@@ -90,15 +90,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Define dynamic colors based on the current Theme
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final subTextColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey;
+    final cardColor = Theme.of(context).cardColor;
+
     return Scaffold(
-      backgroundColor: AppConstants.kBackgroundColor,
+      // Background is now handled by the Theme in main.dart
       appBar: AppBar(
-        title: Text(AppConstants.appName, style: AppConstants.headerStyle.copyWith(fontSize: 20)),
+        title: Text(
+          AppConstants.appName, 
+          style: AppConstants.headerStyle.copyWith(fontSize: 20, color: textColor)
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+            icon: Icon(Icons.settings, color: textColor),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
           )
         ],
@@ -112,9 +120,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               
               // --- SECTION 1: SCORE ---
               if (!_hasScanned && !_isLoading)
-                _buildReadyState()
+                _buildReadyState(textColor)
               else if (_isLoading)
-                _buildLoadingState()
+                _buildLoadingState(subTextColor)
               else
                 ScoreCircle(score: _score, radius: 120.0),
 
@@ -133,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     child: Text(
                       _hasScanned ? "RUN FULL AUDIT AGAIN" : "START AUDIT", 
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1, color: Colors.white),
                     ),
                   ),
                 ),
@@ -141,9 +149,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 30),
 
               // --- SECTION 3: TOOLS GRID ---
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
-                child: Text("Security Tools", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text("Security Tools", style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 15),
 
@@ -189,16 +197,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // --- SECTION 4: RESULTS (Only if scanned) ---
               if (_hasScanned) ...[
                 const SizedBox(height: 30),
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Improvement Advice", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: Text("Improvement Advice", style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 10),
                 ..._results.map((item) => Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppConstants.kCardColor,
+                    color: cardColor, // Dynamic Card Color
                     borderRadius: BorderRadius.circular(10),
                     border: Border(left: BorderSide(color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor, width: 4))
                   ),
@@ -209,11 +217,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           Icon(item.isSafe ? Icons.check_circle : Icons.warning, color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor, size: 20),
                           const SizedBox(width: 10),
-                          Text(item.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(item.title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
                         ],
                       ),
                       const SizedBox(height: 5),
-                      Text(item.recommendation, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                      Text(item.recommendation, style: TextStyle(color: subTextColor, fontSize: 14)),
                     ],
                   ),
                 )),
@@ -227,26 +235,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- WIDGET BUILDERS ---
 
-  Widget _buildReadyState() {
+  Widget _buildReadyState(Color textColor) {
     return Container(
       height: 180, width: 180,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: Colors.grey.withOpacity(0.3), width: 2),
-        color: Colors.white.withOpacity(0.05)
+        color: Theme.of(context).cardColor.withOpacity(0.5),
       ),
-      child: const Column(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.shield_outlined, size: 60, color: Colors.grey),
-          SizedBox(height: 10),
-          Text("No Data", style: TextStyle(color: Colors.grey))
+          const Icon(Icons.shield_outlined, size: 60, color: Colors.grey),
+          const SizedBox(height: 10),
+          Text("No Data", style: TextStyle(color: textColor.withOpacity(0.5)))
         ],
       ),
     );
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(Color textColor) {
     return SizedBox(
       height: 180, width: 180,
       child: Column(
@@ -254,15 +262,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           const CircularProgressIndicator(color: AppConstants.kPrimaryColor),
           const SizedBox(height: 20),
-          Text(_scanStatus, style: const TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center),
+          Text(_scanStatus, style: TextStyle(color: textColor, fontSize: 12), textAlign: TextAlign.center),
         ],
       ),
     );
   }
 
   Widget _buildTile(BuildContext context, String title, IconData icon, Color color, Widget page) {
+    final cardColor = Theme.of(context).cardColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color;
+    final borderColor = Theme.of(context).brightness == Brightness.dark 
+        ? Colors.white.withOpacity(0.1) 
+        : Colors.grey.withOpacity(0.2);
+
     return Material(
-      color: AppConstants.kCardColor,
+      color: cardColor,
       borderRadius: BorderRadius.circular(15),
       child: InkWell(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
@@ -271,7 +285,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: borderColor),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -288,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
               ),
             ],
           ),
