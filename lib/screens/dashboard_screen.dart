@@ -6,6 +6,7 @@ import '../widgets/score_circle.dart';
 import 'settings_screen.dart';
 import 'permission_audit_screen.dart';
 import 'data_breach_screen.dart';
+import 'password_generator_screen.dart';
 // Ensure this import points to the file where you put the SpywareHunterScreen class
 import 'spyware_screen.dart'; 
 
@@ -168,6 +169,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
               label: const Text("Data Breach Checker", style: TextStyle(color: Colors.white)),
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.deepPurple),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // 5. NEW: Password Generator Button
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PasswordGeneratorScreen()),
+                );
+              },
+              icon: const Icon(Icons.vpn_key, color: Colors.teal),
+              label: const Text("Secure Password Gen", style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.teal),
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
             ),
