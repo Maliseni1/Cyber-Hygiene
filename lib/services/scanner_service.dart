@@ -1,41 +1,55 @@
-import 'dart:async';
-import 'package:flutter/services.dart';
-import '../models/audit_result.dart';
+import 'package:device_apps/device_apps.dart';
 
 class ScannerService {
-  // Matches the channel name in MainActivity.kt
-  static const platform = MethodChannel('com.Maliseni1.cyber_hygiene/scan');
-
-  Future<List<AuditResult>> runFullScan() async {
+  // 1. Fetch all installed apps
+  Future<List<Application>> getAllApps() async {
     try {
-      // Call the Native Kotlin code
-      final List<dynamic> resultList = await platform.invokeMethod('getSecurityStatus');
-
-      // Parse the JSON-like List<Map> coming from Kotlin
-      return resultList.map((item) {
-        final Map<dynamic, dynamic> map = item;
-        return AuditResult(
-          title: map['title'] ?? "Unknown Check",
-          isSafe: map['isSafe'] ?? false,
-          recommendation: map['recommendation'] ?? "No advice available.",
-        );
-      }).toList();
-
-    } on PlatformException catch (e) {
-      // Fallback if the native call fails
-      return [
-        AuditResult(
-          title: "Scan Error",
-          isSafe: false,
-          recommendation: "Could not access device settings: ${e.message}",
-        )
-      ];
+      return await DeviceApps.getInstalledApplications(
+        includeAppIcons: true,
+        includeSystemApps: false,
+        onlyAppsWithLaunchIntent: true,
+      );
+    } catch (e) {
+      print("Error fetching apps: $e");
+      return [];
     }
   }
 
-  int calculateScore(List<AuditResult> results) {
-    if (results.isEmpty) return 0;
-    int safeCount = results.where((r) => r.isSafe).length;
-    return ((safeCount / results.length) * 100).round();
+  // 2. Identify suspicious apps
+  bool isSuspicious(Application app) {
+    final suspiciousKeywords = ['spy', 'track', 'monitor', 'hack', 'logger'];
+    for (var keyword in suspiciousKeywords) {
+      if (app.packageName.toLowerCase().contains(keyword) || 
+          app.appName.toLowerCase().contains(keyword)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // --- NEW METHODS ADDED BELOW ---
+
+  // 3. Wrapper for 'runFullScan' (called by Dashboard)
+  Future<List<Application>> runFullScan() async {
+    // Just calls getAllApps(), but matches the name your Dashboard expects
+    return await getAllApps();
+  }
+
+  // 4. Calculate Score Logic (called by Dashboard)
+  double calculateScore(List<Application> apps) {
+    int suspiciousFound = 0;
+    for (var app in apps) {
+      if (isSuspicious(app)) {
+        suspiciousFound++;
+      }
+    }
+
+    double score = 100.0;
+    if (apps.isNotEmpty) {
+      // Deduct 10 points for every suspicious app found
+      score = 100.0 - (suspiciousFound * 10.0);
+      if (score < 0) score = 0;
+    }
+    return score;
   }
 }

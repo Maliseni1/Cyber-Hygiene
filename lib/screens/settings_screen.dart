@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../utils/constants.dart';
 import '../services/local_storage.dart';
+import '../services/update_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   String _version = "Loading...";
   final LocalStorage _storage = LocalStorage();
+  final UpdateService _updateService = UpdateService();
+  bool _isCheckingUpdate = false;
 
   @override
   void initState() {
@@ -27,6 +30,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  // --- Update Feature Logic ---
+  Future<void> _handleCheckUpdate() async {
+    setState(() => _isCheckingUpdate = true);
+
+    final result = await _updateService.checkForUpdate();
+
+    setState(() => _isCheckingUpdate = false);
+
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not connect to update server.")),
+      );
+      return;
+    }
+
+    if (result['updateAvailable'] == true) {
+      _showUpdateDialog(result);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("You are up to date!"),
+          backgroundColor: AppConstants.kSafeColor,
+        ),
+      );
+    }
+  }
+
+  void _showUpdateDialog(Map<String, dynamic> updateData) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppConstants.kCardColor,
+        title: const Text("Update Available 🚀", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Version ${updateData['latestVersion']} is available.",
+              style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              updateData['body'] ?? "Security improvements and bug fixes.",
+              style: const TextStyle(color: Colors.grey),
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Later"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppConstants.kPrimaryColor),
+            onPressed: () {
+              Navigator.pop(context);
+              _updateService.launchUpdateUrl(updateData['downloadUrl']);
+            },
+            child: const Text("Download"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Data Wipe Logic ---
   Future<void> _handleClearData() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -86,12 +160,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 
                 const SizedBox(height: 20),
                 _buildSectionHeader("About"),
+                // NEW: Update Check Tile
+                _buildTile(
+                  icon: Icons.system_update,
+                  title: "Check for Updates",
+                  subtitle: _isCheckingUpdate ? "Checking..." : "Current: $_version",
+                  iconColor: Colors.purpleAccent,
+                  onTap: _isCheckingUpdate ? () {} : _handleCheckUpdate,
+                ),
                 _buildTile(
                   icon: Icons.info_outline,
-                  title: "Version",
-                  subtitle: _version,
+                  title: "Version Info",
+                  subtitle: "Build details",
                   iconColor: Colors.blueGrey,
-                  onTap: () {}, 
+                  onTap: () {}, // Just informational
                 ),
                 _buildTile(
                   icon: Icons.shield,
@@ -99,7 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: "No data leaves this device.",
                   iconColor: AppConstants.kSafeColor,
                   onTap: () {
-                    // TODO: Show Privacy Policy
+                    // Placeholder for future privacy policy page
                   },
                 ),
               ],

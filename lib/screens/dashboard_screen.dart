@@ -4,6 +4,8 @@ import '../models/audit_result.dart';
 import '../utils/constants.dart';
 import '../widgets/score_circle.dart';
 import 'settings_screen.dart';
+// Ensure this import points to the file where you put the SpywareHunterScreen class
+import 'spyware_screen.dart'; 
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,18 +18,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final ScannerService _scanner = ScannerService();
   List<AuditResult> _results = [];
   bool _isLoading = false;
-  int _score = 0;
+  int _score = 100; // Default to 100 until scanned
 
   void _performScan() async {
     setState(() => _isLoading = true);
-    final results = await _scanner.runFullScan();
-    final score = _scanner.calculateScore(results);
-    
-    setState(() => {
-      _results = results,
-      _score = score,
-      _isLoading = false
-    });
+
+    try {
+      // 1. Run the scan (Returns List<Application>)
+      final apps = await _scanner.runFullScan();
+      
+      // 2. Calculate Score (Returns double, need to cast to int)
+      final double rawScore = _scanner.calculateScore(apps);
+      
+      // 3. Convert "Apps" to "AuditResults" for the list view
+      List<AuditResult> scanResults = [];
+      
+      // Check for suspicious apps and add them to the results list
+      bool foundIssues = false;
+      for (var app in apps) {
+        if (_scanner.isSuspicious(app)) {
+          foundIssues = true;
+          scanResults.add(AuditResult(
+            title: "Suspicious: ${app.appName}",
+            recommendation: "Uninstall ${app.packageName} immediately.",
+            isSafe: false,
+          ));
+        }
+      }
+
+      // If no issues found, add a "Safe" result
+      if (!foundIssues) {
+        scanResults.add(AuditResult(
+          title: "System Safe",
+          recommendation: "No known spyware signatures detected.",
+          isSafe: true,
+        ));
+      }
+
+      if (mounted) {
+        setState(() {
+          _results = scanResults;
+          _score = rawScore.toInt(); // Fix: Convert double to int
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Scan failed: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _results = [
+            AuditResult(
+              title: "Scan Error", 
+              recommendation: "Could not complete scan. Check permissions.", 
+              isSafe: false
+            )
+          ];
+        });
+      }
+    }
   }
 
   @override
@@ -55,6 +104,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 20),
             ScoreCircle(score: _score, radius: 130.0),
             const SizedBox(height: 30),
+            
+            // 1. Main Security Scan Button
             ElevatedButton.icon(
               onPressed: _isLoading ? null : _performScan,
               icon: const Icon(Icons.security),
@@ -64,7 +115,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
               ),
             ),
+            
+            const SizedBox(height: 15),
+
+            // 2. Spyware Hunter Button
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  // FIX: Use the correct class name 'SpywareHunterScreen'
+                  // removing 'const' if the constructor causes issues, 
+                  // but 'const' is fine if the class is defined with a const constructor.
+                  MaterialPageRoute(builder: (context) => const SpywareHunterScreen()),
+                );
+              },
+              icon: const Icon(Icons.remove_red_eye, color: AppConstants.kWarningColor),
+              label: const Text("Open Spyware Hunter", style: TextStyle(color: Colors.white)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppConstants.kWarningColor),
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+              ),
+            ),
+
             const SizedBox(height: 20),
+            
+            // Results List
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
