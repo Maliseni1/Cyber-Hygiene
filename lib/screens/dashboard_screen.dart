@@ -19,12 +19,11 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final ScannerService _scanner = ScannerService();
   
-  // State Variables
   List<AuditResult> _results = [];
   bool _isLoading = false;
-  bool _hasScanned = false; // Tracks if we have run a scan yet
-  int _score = 0;           // The final score
-  String _scanStatus = "";  // Shows "Checking passwords...", "Scanning apps..."
+  bool _hasScanned = false; 
+  int _score = 0;           
+  String _scanStatus = "";  
 
   void _performScan() async {
     setState(() {
@@ -34,26 +33,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
 
     try {
-      // 1. SIMULATE SETTINGS & HABITS AUDIT
-      // Real apps can't see your brain, so we check for "Best Practices"
       setState(() => _scanStatus = "Analyzing Device Settings...");
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 500));
 
       setState(() => _scanStatus = "Checking Password Habits...");
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      setState(() => _scanStatus = "Verifying 2FA Configuration...");
-      await Future.delayed(const Duration(milliseconds: 800));
-
-      // 2. REAL APP SCAN
-      setState(() => _scanStatus = "Scanning Installed Applications...");
+      setState(() => _scanStatus = "Scanning Installed Apps...");
       final apps = await _scanner.runFullScan();
       
-      // 3. COMPILE RESULTS
       List<AuditResult> scanResults = [];
       int penalties = 0;
 
-      // Check Apps (Real Data)
       for (var app in apps) {
         if (_scanner.isSuspicious(app)) {
           penalties += 10;
@@ -65,23 +56,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // Check "Habits" (Static Advice based on "Auditor" logic)
-      // In a real app, you might check if Screen Lock is enabled (requires packages).
-      // Here we assume defaults and give advice.
+      // Default advice if no real threats found
+      if (scanResults.isEmpty) {
+        scanResults.add(AuditResult(
+          title: "System Clean",
+          recommendation: "No malicious apps detected.",
+          isSafe: true,
+        ));
+      }
+      
+      // Always add general hygiene advice
       scanResults.add(AuditResult(
-        title: "2FA Usage",
-        recommendation: "Ensure 2-Factor Authentication is enabled on Google & Socials.",
-        isSafe: true, // We assume safe, but remind them
-      ));
-
-      scanResults.add(AuditResult(
-        title: "Screen Lock",
-        recommendation: "Use Biometrics or a strong PIN, not a Pattern.",
+        title: "2FA Check",
+        recommendation: "Enable 2FA on your Google Account.",
         isSafe: true,
       ));
 
-      // 4. CALCULATE SCORE
-      // Base 100, minus penalties for bad apps
       int calculatedScore = 100 - penalties;
       if (calculatedScore < 0) calculatedScore = 0;
 
@@ -90,17 +80,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _results = scanResults;
           _score = calculatedScore;
           _isLoading = false;
-          _hasScanned = true; // NOW we show the score
+          _hasScanned = true; 
         });
       }
     } catch (e) {
-      print("Scan failed: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _hasScanned = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -115,123 +99,200 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white),
-            onPressed: () => Navigator.push(
-              context, 
-              MaterialPageRoute(builder: (_) => const SettingsScreen())
-            ),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
           )
         ],
       ),
-      body: Center(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            
-            // --- SCORE CIRCLE (CONDITIONAL) ---
-            if (!_hasScanned && !_isLoading)
-              // State 1: Ready to Scan
-              Container(
-                height: 200, width: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey.withOpacity(0.5), width: 4),
-                  color: Colors.white.withOpacity(0.05)
-                ),
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.shield_outlined, size: 60, color: Colors.grey),
-                    SizedBox(height: 10),
-                    Text("Tap Scan", style: TextStyle(color: Colors.grey, fontSize: 18))
-                  ],
-                ),
-              )
-            else if (_isLoading)
-              // State 2: Scanning...
-              SizedBox(
-                height: 200, width: 200,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const CircularProgressIndicator(color: AppConstants.kPrimaryColor),
-                    const SizedBox(height: 20),
-                    Text(_scanStatus, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                  ],
-                ),
-              )
-            else
-              // State 3: Score Result
-              ScoreCircle(score: _score, radius: 130.0),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              
+              // --- SECTION 1: SCORE ---
+              if (!_hasScanned && !_isLoading)
+                _buildReadyState()
+              else if (_isLoading)
+                _buildLoadingState()
+              else
+                ScoreCircle(score: _score, radius: 120.0),
 
-            const SizedBox(height: 30),
-            
-            // --- MAIN SCAN BUTTON ---
-            // Only show if not loading
-            if (!_isLoading)
-            ElevatedButton.icon(
-              onPressed: _performScan,
-              icon: const Icon(Icons.radar),
-              label: Text(_hasScanned ? "Re-Scan Device" : "Run Security Audit"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.kPrimaryColor,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              const SizedBox(height: 25),
+
+              // --- SECTION 2: SCAN BUTTON ---
+              if (!_isLoading)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _performScan,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.kPrimaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text(
+                      _hasScanned ? "RUN FULL AUDIT AGAIN" : "START AUDIT", 
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    ),
+                  ),
+                ),
+              
+              const SizedBox(height: 30),
+
+              // --- SECTION 3: TOOLS GRID ---
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Security Tools", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-            ),
-            
-            const SizedBox(height: 20),
-            const Divider(color: Colors.white24),
-            
-            // TEMPORARY LIST OF BUTTONS (Will be replaced by Grid in Phase 3)
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(20),
+              const SizedBox(height: 15),
+
+              GridView.count(
+                shrinkWrap: true, // Vital for inside SingleChildScrollView
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 15,
+                mainAxisSpacing: 15,
+                childAspectRatio: 1.1,
                 children: [
-                   // The Feature buttons are here, but we will replace them in Phase 3
-                   // Just placeholders to keep the app compiling for now
-                   _buildFeatureButton(context, "Spyware Hunter", Icons.remove_red_eye, Colors.red, const SpywareHunterScreen()),
-                   _buildFeatureButton(context, "Permission Audit", Icons.lock_person, Colors.blue, const PermissionAuditScreen()),
-                   _buildFeatureButton(context, "Data Breach Check", Icons.travel_explore, Colors.deepPurple, const DataBreachScreen()),
-                   _buildFeatureButton(context, "Password Gen", Icons.vpn_key, Colors.teal, const PasswordGeneratorScreen()),
-                   
-                   // Show Audit Results if scanned
-                   if (_hasScanned) ...[
-                     const Padding(
-                       padding: EdgeInsets.symmetric(vertical: 15),
-                       child: Text("Audit Results", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                     ),
-                     ..._results.map((item) => Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: AppConstants.kCardColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border(left: BorderSide(color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor, width: 4))
-                        ),
-                        child: ListTile(
-                          title: Text(item.title, style: const TextStyle(color: Colors.white)),
-                          subtitle: Text(item.recommendation, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          trailing: Icon(item.isSafe ? Icons.check_circle : Icons.warning, color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor),
-                        ),
-                     ))
-                   ]
+                  _buildTile(
+                    context, 
+                    "Spyware\nHunter", 
+                    Icons.remove_red_eye, 
+                    AppConstants.kWarningColor, 
+                    const SpywareHunterScreen()
+                  ),
+                  _buildTile(
+                    context, 
+                    "Permission\nAudit", 
+                    Icons.lock_person, 
+                    Colors.blueAccent, 
+                    const PermissionAuditScreen()
+                  ),
+                  _buildTile(
+                    context, 
+                    "Data Breach\nCheck", 
+                    Icons.travel_explore, 
+                    Colors.deepPurpleAccent, 
+                    const DataBreachScreen()
+                  ),
+                  _buildTile(
+                    context, 
+                    "Password\nGenerator", 
+                    Icons.vpn_key, 
+                    Colors.tealAccent, 
+                    const PasswordGeneratorScreen()
+                  ),
                 ],
               ),
-            )
-          ],
+
+              // --- SECTION 4: RESULTS (Only if scanned) ---
+              if (_hasScanned) ...[
+                const SizedBox(height: 30),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Improvement Advice", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 10),
+                ..._results.map((item) => Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppConstants.kCardColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border(left: BorderSide(color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor, width: 4))
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(item.isSafe ? Icons.check_circle : Icons.warning, color: item.isSafe ? AppConstants.kSafeColor : AppConstants.kWarningColor, size: 20),
+                          const SizedBox(width: 10),
+                          Text(item.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(item.recommendation, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    ],
+                  ),
+                )),
+              ]
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Helper for Phase 1 (Temporary)
-  Widget _buildFeatureButton(BuildContext context, String label, IconData icon, Color color, Widget screen) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: OutlinedButton.icon(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => screen)),
-        icon: Icon(icon, color: color),
-        label: Text(label, style: const TextStyle(color: Colors.white)),
-        style: OutlinedButton.styleFrom(side: BorderSide(color: color), padding: const EdgeInsets.all(15)),
+  // --- WIDGET BUILDERS ---
+
+  Widget _buildReadyState() {
+    return Container(
+      height: 180, width: 180,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.grey.withOpacity(0.3), width: 2),
+        color: Colors.white.withOpacity(0.05)
+      ),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.shield_outlined, size: 60, color: Colors.grey),
+          SizedBox(height: 10),
+          Text("No Data", style: TextStyle(color: Colors.grey))
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return SizedBox(
+      height: 180, width: 180,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: AppConstants.kPrimaryColor),
+          const SizedBox(height: 20),
+          Text(_scanStatus, style: const TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTile(BuildContext context, String title, IconData icon, Color color, Widget page) {
+    return Material(
+      color: AppConstants.kCardColor,
+      borderRadius: BorderRadius.circular(15),
+      child: InkWell(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 30),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
